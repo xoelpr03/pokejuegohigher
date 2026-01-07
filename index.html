@@ -38,7 +38,6 @@
             position: relative;
         }
 
-        /* OVERLAY STYLING */
         #game-over-overlay {
             display: none;
             position: absolute;
@@ -100,19 +99,18 @@
         .mode-play { background: #3b82f6; color: white; font-size: 18px; }
         .exit-link-btn { background: #64748b; color: white; }
 
-        @keyframes slideInRight {
-            from { transform: translateX(50px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        .animate-enter { animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards; }
-
         .poke-card {
             background: rgba(15, 23, 42, 0.7);
             backdrop-filter: blur(10px);
             border: 2px solid rgba(255,255,255,0.1);
             border-radius: 20px; padding: 15px 10px; flex: 1; cursor: pointer; transition: 0.3s;
             -webkit-tap-highlight-color: transparent;
+        }
+
+        .animate-enter { animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards; }
+        @keyframes slideInRight {
+            from { transform: translateX(50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
 
         .winner { border-color: var(--success) !important; background: rgba(16, 185, 129, 0.4) !important; }
@@ -207,11 +205,9 @@
         }
 
         function startGame() {
-            // Hide menu and overlay
             document.getElementById('main-menu').style.display = 'none';
             document.getElementById('game-over-overlay').style.display = 'none';
             document.getElementById('game-screen').style.display = 'block';
-            
             streak = 0;
             initGame(true);
         }
@@ -227,13 +223,27 @@
             document.getElementById('loading-msg').style.display = 'block';
             let data = null;
             let found = false;
+            
             while(!found) {
-                const id = Math.floor(Math.random() * 898) + 1;
-                const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
-                data = await res.json();
-                const stats = data.stats.map(s => s.base_stat);
-                if (stats.every(v => v >= 35 && v <= 145)) found = true;
+                // Range up to 1025 to include SV and PLZA era mons
+                const id = Math.floor(Math.random() * 1025) + 1;
+                
+                try {
+                    // Check species first for Legendary/Mythical status
+                    const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`);
+                    const speciesData = await speciesRes.json();
+                    
+                    if (speciesData.is_legendary || speciesData.is_mythical) continue;
+
+                    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+                    data = await res.json();
+                    
+                    const stats = data.stats.map(s => s.base_stat);
+                    // Existing balance filter
+                    if (stats.every(v => v >= 35 && v <= 145)) found = true;
+                } catch(e) { continue; }
             }
+            
             data.bst = data.stats.reduce((acc, s) => acc + s.base_stat, 0);
             document.getElementById('loading-msg').style.display = 'none';
             return data;
@@ -255,7 +265,7 @@
             }
 
             document.getElementById('left-name').innerText = leftData.name;
-            document.getElementById('left-img').src = leftData.sprites.front_default;
+            document.getElementById('left-img').src = leftData.sprites.other['official-artwork'].front_default || leftData.sprites.front_default;
             
             rightData = await fetchPoke();
             while(rightData.id === leftData.id) rightData = await fetchPoke();
@@ -272,7 +282,7 @@
             document.getElementById('streak').innerText = streak;
 
             document.getElementById('right-name').innerText = rightData.name;
-            document.getElementById('right-img').src = rightData.sprites.front_default;
+            document.getElementById('right-img').src = rightData.sprites.other['official-artwork'].front_default || rightData.sprites.front_default;
 
             void rightCard.offsetWidth; 
             rightCard.classList.add('animate-enter');
@@ -300,7 +310,6 @@
             } else {
                 document.getElementById(choice + '-card').classList.add('loser');
                 setTimeout(() => {
-                    // INSTEAD OF ALERT: Show custom overlay
                     document.getElementById('final-streak').innerText = streak;
                     document.getElementById('game-over-overlay').style.display = 'flex';
                 }, 800);
@@ -309,4 +318,3 @@
     </script>
 </body>
 </html>
-
