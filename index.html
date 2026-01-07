@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Poké-Higher or Lower</title>
+    <title>Poké-Higher or Lower (Sprite Edition)</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -66,8 +66,7 @@
         @media (max-width: 400px) {
             .game-area { flex-direction: column; gap: 5px; }
             .vs-text { margin: 5px 0; }
-            .poke-card { width: 100%; max-width: 280px; padding: 10px !important; }
-            .poke-img { width: 100px !important; height: 100px !important; }
+            .poke-card { width: 100%; max-width: 280px; padding: 15px !important; }
         }
 
         .menu-card {
@@ -103,7 +102,7 @@
             background: rgba(15, 23, 42, 0.7);
             backdrop-filter: blur(10px);
             border: 2px solid rgba(255,255,255,0.1);
-            border-radius: 20px; padding: 15px 10px; flex: 1; cursor: pointer; transition: 0.3s;
+            border-radius: 20px; padding: 25px 15px; flex: 1; cursor: pointer; transition: 0.3s;
         }
 
         .animate-enter { animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards; }
@@ -115,7 +114,13 @@
         .winner { border-color: var(--success) !important; background: rgba(16, 185, 129, 0.4) !important; }
         .loser { border-color: var(--danger) !important; background: rgba(239, 68, 68, 0.4) !important; }
 
-        .poke-img { width: 120px; height: 120px; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3)); }
+        .poke-img { 
+            width: 96px; 
+            height: 96px; 
+            image-rendering: pixelated; /* Keeps sprites crisp */
+            object-fit: contain;
+        }
+
         .poke-name { font-size: 14px; font-weight: 800; text-transform: capitalize; margin: 8px 0; letter-spacing: 0.5px;}
         
         .stat-value { font-size: 26px; font-weight: 900; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); opacity: 0; transition: 0.3s; }
@@ -217,26 +222,32 @@
             let found = false;
             
             while(!found) {
+                // Range for Gen 1-9 (current 2026 data)
                 const id = Math.floor(Math.random() * 1025) + 1;
                 
                 try {
                     const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`);
                     const speciesData = await speciesRes.json();
                     
-                    // Filter: Legendary, Mythical, Ultra Beasts (via species flags)
+                    // Remove Legendaries and Mythicals
                     if (speciesData.is_legendary || speciesData.is_mythical) continue;
 
                     const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
                     data = await res.json();
                     
-                    // Filter Paradox & Specific Ultra Beasts by name patterns or IDs
+                    // Filter Paradox & Ultra Beasts by name patterns
                     const n = data.name;
-                    if (n.startsWith('iron-') || n.startsWith('scream-') || n.startsWith('flutter-') || 
-                        n.startsWith('roaring-') || n.startsWith('great-tusk') || n.startsWith('brute-bonnet') ||
-                        n.startsWith('sandy-shocks') || n.startsWith('slither-wing')) continue;
+                    const isParadox = n.startsWith('iron-') || n.startsWith('scream-') || n.startsWith('flutter-') || 
+                                    n.startsWith('roaring-') || n.startsWith('great-tusk') || n.startsWith('brute-bonnet') ||
+                                    n.startsWith('sandy-shocks') || n.startsWith('slither-wing') || n.startsWith('walking-wake') ||
+                                    n.startsWith('gouging-fire') || n.startsWith('raging-bolt') || n.startsWith('iron-boulder') ||
+                                    n.startsWith('iron-crown') || n.startsWith('iron-leaves');
+                    
+                    if (isParadox) continue;
 
+                    // Standard Stat Balance check (skip very weak/gimmick mons)
                     const stats = data.stats.map(s => s.base_stat);
-                    if (stats.every(v => v >= 35 && v <= 145)) found = true;
+                    if (stats.every(v => v >= 30 && v <= 150)) found = true;
                 } catch(e) { continue; }
             }
             
@@ -260,9 +271,9 @@
                 leftData = await fetchPoke();
             }
 
-            // Using HOME models
+            // SPRITE VERSION: Uses front_default
             document.getElementById('left-name').innerText = leftData.name.replace(/-/g, ' ');
-            document.getElementById('left-img').src = leftData.sprites.other.home.front_default || leftData.sprites.front_default;
+            document.getElementById('left-img').src = leftData.sprites.front_default;
             
             rightData = await fetchPoke();
             while(rightData.id === leftData.id) rightData = await fetchPoke();
@@ -278,8 +289,9 @@
             document.getElementById('stat-name').innerText = currentStatKey.toUpperCase();
             document.getElementById('streak').innerText = streak;
 
+            // SPRITE VERSION: Uses front_default
             document.getElementById('right-name').innerText = rightData.name.replace(/-/g, ' ');
-            document.getElementById('right-img').src = rightData.sprites.other.home.front_default || rightData.sprites.front_default;
+            document.getElementById('right-img').src = rightData.sprites.front_default;
 
             void rightCard.offsetWidth; 
             rightCard.classList.add('animate-enter');
