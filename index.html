@@ -67,7 +67,7 @@
             .game-area { flex-direction: column; gap: 5px; }
             .vs-text { margin: 5px 0; }
             .poke-card { width: 100%; max-width: 280px; padding: 10px !important; }
-            .poke-img { width: 70px !important; height: 70px !important; }
+            .poke-img { width: 100px !important; height: 100px !important; }
         }
 
         .menu-card {
@@ -104,7 +104,6 @@
             backdrop-filter: blur(10px);
             border: 2px solid rgba(255,255,255,0.1);
             border-radius: 20px; padding: 15px 10px; flex: 1; cursor: pointer; transition: 0.3s;
-            -webkit-tap-highlight-color: transparent;
         }
 
         .animate-enter { animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards; }
@@ -116,13 +115,7 @@
         .winner { border-color: var(--success) !important; background: rgba(16, 185, 129, 0.4) !important; }
         .loser { border-color: var(--danger) !important; background: rgba(239, 68, 68, 0.4) !important; }
 
-        .creator-credit {
-            margin-top: 25px; font-size: 9px; font-weight: 800; text-transform: lowercase;
-            letter-spacing: 2px; color: #94a3b8; opacity: 0.6; text-align: center;
-            border-top: 1px solid #e2e8f0; padding-top: 12px; width: 180px; margin: 25px auto 0;
-        }
-
-        .poke-img { width: 90px; height: 90px; image-rendering: pixelated; }
+        .poke-img { width: 120px; height: 120px; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3)); }
         .poke-name { font-size: 14px; font-weight: 800; text-transform: capitalize; margin: 8px 0; letter-spacing: 0.5px;}
         
         .stat-value { font-size: 26px; font-weight: 900; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); opacity: 0; transition: 0.3s; }
@@ -216,7 +209,6 @@
             document.body.style.background = 'radial-gradient(circle at top, #1e293b 0%, #0f172a 100%)';
             document.getElementById('main-menu').style.display = 'block';
             document.getElementById('game-screen').style.display = 'none';
-            document.getElementById('game-over-overlay').style.display = 'none';
         }
 
         async function fetchPoke() {
@@ -225,21 +217,25 @@
             let found = false;
             
             while(!found) {
-                // Range up to 1025 to include SV and PLZA era mons
                 const id = Math.floor(Math.random() * 1025) + 1;
                 
                 try {
-                    // Check species first for Legendary/Mythical status
                     const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`);
                     const speciesData = await speciesRes.json();
                     
+                    // Filter: Legendary, Mythical, Ultra Beasts (via species flags)
                     if (speciesData.is_legendary || speciesData.is_mythical) continue;
 
                     const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
                     data = await res.json();
                     
+                    // Filter Paradox & Specific Ultra Beasts by name patterns or IDs
+                    const n = data.name;
+                    if (n.startsWith('iron-') || n.startsWith('scream-') || n.startsWith('flutter-') || 
+                        n.startsWith('roaring-') || n.startsWith('great-tusk') || n.startsWith('brute-bonnet') ||
+                        n.startsWith('sandy-shocks') || n.startsWith('slither-wing')) continue;
+
                     const stats = data.stats.map(s => s.base_stat);
-                    // Existing balance filter
                     if (stats.every(v => v >= 35 && v <= 145)) found = true;
                 } catch(e) { continue; }
             }
@@ -264,8 +260,9 @@
                 leftData = await fetchPoke();
             }
 
-            document.getElementById('left-name').innerText = leftData.name;
-            document.getElementById('left-img').src = leftData.sprites.other['official-artwork'].front_default || leftData.sprites.front_default;
+            // Using HOME models
+            document.getElementById('left-name').innerText = leftData.name.replace(/-/g, ' ');
+            document.getElementById('left-img').src = leftData.sprites.other.home.front_default || leftData.sprites.front_default;
             
             rightData = await fetchPoke();
             while(rightData.id === leftData.id) rightData = await fetchPoke();
@@ -281,8 +278,8 @@
             document.getElementById('stat-name').innerText = currentStatKey.toUpperCase();
             document.getElementById('streak').innerText = streak;
 
-            document.getElementById('right-name').innerText = rightData.name;
-            document.getElementById('right-img').src = rightData.sprites.other['official-artwork'].front_default || rightData.sprites.front_default;
+            document.getElementById('right-name').innerText = rightData.name.replace(/-/g, ' ');
+            document.getElementById('right-img').src = rightData.sprites.other.home.front_default || rightData.sprites.front_default;
 
             void rightCard.offsetWidth; 
             rightCard.classList.add('animate-enter');
@@ -302,9 +299,7 @@
                 streak++;
                 document.getElementById(choice + '-card').classList.add('winner');
                 setTimeout(() => {
-                    if (choice === 'right') {
-                        leftData = rightData;
-                    }
+                    if (choice === 'right') leftData = rightData;
                     initGame(false);
                 }, 1000);
             } else {
